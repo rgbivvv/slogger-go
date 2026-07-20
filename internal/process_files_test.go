@@ -8,16 +8,6 @@ import (
 	"time"
 )
 
-func TestParseFilenameEpoch(t *testing.T) {
-	date, epoch, ok := ParseFilenameEpoch("20260126_1769475135_hello")
-	if !ok || date != "20260126" || epoch != 1769475135 {
-		t.Fatalf("got date=%q epoch=%d ok=%v", date, epoch, ok)
-	}
-	if _, _, ok := ParseFilenameEpoch("bad"); ok {
-		t.Fatal("expected failure for bad stem")
-	}
-}
-
 func TestParsePostsParallelSorted(t *testing.T) {
 	src := t.TempDir()
 	assets := t.TempDir()
@@ -30,7 +20,7 @@ func TestParsePostsParallelSorted(t *testing.T) {
 		}
 	}
 	cfg := &Config{SiteURL: "https://example.com"}
-	posts, err := parsePosts(src, assets, cfg, SanitizePolicy(), cache)
+	posts, err := parsePosts(src, assets, cfg, cache)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +45,7 @@ func TestParsePostsCacheHitMiss(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	posts, err := parsePosts(src, assets, cfg, SanitizePolicy(), cache)
+	posts, err := parsePosts(src, assets, cfg, cache)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +58,7 @@ func TestParsePostsCacheHitMiss(t *testing.T) {
 		t.Fatal("expected cache file after miss:", err)
 	}
 
-	posts2, err := parsePosts(src, assets, cfg, SanitizePolicy(), cache)
+	posts2, err := parsePosts(src, assets, cfg, cache)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +77,7 @@ func TestParsePostsCacheHitMiss(t *testing.T) {
 	if err := os.Chtimes(path, past, past); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := parsePosts(src, assets, cfg, SanitizePolicy(), cache); err != nil {
+	if _, err := parsePosts(src, assets, cfg, cache); err != nil {
 		t.Fatal(err)
 	}
 	info3, err := os.Stat(cpath)

@@ -8,13 +8,6 @@ import (
 	"unicode"
 )
 
-func EnsureDir(path string) (string, error) {
-	if err := os.MkdirAll(path, 0o755); err != nil {
-		return "", err
-	}
-	return path, nil
-}
-
 func WipeDirFilesOnly(root string) error {
 	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {

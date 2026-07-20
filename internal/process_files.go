@@ -12,7 +12,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
 )
 
@@ -23,16 +22,15 @@ type Post struct {
 	Title       string
 	Epoch       int64
 	Date        string
-	FContent    string
 	HTMLContent string
 	Permalink   string
 }
 
-func ParsePosts(srcDir, assetsDir string, cfg *Config, policy *bluemonday.Policy) ([]Post, error) {
-	return parsePosts(srcDir, assetsDir, cfg, policy, ".slogger-cache")
+func ParsePosts(srcDir, assetsDir string, cfg *Config) ([]Post, error) {
+	return parsePosts(srcDir, assetsDir, cfg, ".slogger-cache")
 }
 
-func parsePosts(srcDir, assetsDir string, cfg *Config, policy *bluemonday.Policy, cacheDir string) ([]Post, error) {
+func parsePosts(srcDir, assetsDir string, cfg *Config, cacheDir string) ([]Post, error) {
 	entries, err := os.ReadDir(srcDir)
 	if err != nil {
 		return nil, err
@@ -76,7 +74,7 @@ func parsePosts(srcDir, assetsDir string, cfg *Config, policy *bluemonday.Policy
 	}
 
 	if len(misses) > 0 {
-		parsed, err := parsePostMisses(misses, srcDir, assetsDir, cfg, policy)
+		parsed, err := parsePostMisses(misses, srcDir, assetsDir, cfg)
 		if err != nil {
 			return nil, err
 		}
@@ -100,7 +98,7 @@ func parsePosts(srcDir, assetsDir string, cfg *Config, policy *bluemonday.Policy
 	return posts, nil
 }
 
-func parsePostMisses(misses []string, srcDir, assetsDir string, cfg *Config, policy *bluemonday.Policy) ([]Post, error) {
+func parsePostMisses(misses []string, srcDir, assetsDir string, cfg *Config) ([]Post, error) {
 	n := runtime.NumCPU()
 	if n < 1 {
 		n = 1
@@ -123,7 +121,7 @@ func parsePostMisses(misses []string, srcDir, assetsDir string, cfg *Config, pol
 			defer wg.Done()
 			md := goldmark.New()
 			for name := range jobCh {
-				post, ok, err := parsePostFile(name, srcDir, assetsDir, cfg, policy, md)
+				post, ok, err := parsePostFile(name, srcDir, assetsDir, cfg, md)
 				if err != nil {
 					resCh <- result{err: err}
 					continue
@@ -159,7 +157,7 @@ func parsePostMisses(misses []string, srcDir, assetsDir string, cfg *Config, pol
 	return posts, nil
 }
 
-func parsePostFile(name, srcDir, assetsDir string, cfg *Config, policy *bluemonday.Policy, md goldmark.Markdown) (Post, bool, error) {
+func parsePostFile(name, srcDir, assetsDir string, cfg *Config, md goldmark.Markdown) (Post, bool, error) {
 	path := filepath.Join(srcDir, name)
 	info, err := os.Stat(path)
 	if err != nil {
@@ -200,7 +198,6 @@ func parsePostFile(name, srcDir, assetsDir string, cfg *Config, policy *bluemond
 	if err := md.Convert([]byte(content), &buf); err != nil {
 		return Post{}, false, err
 	}
-	html := SanitizeHTML(buf.String(), policy)
 	return Post{
 		FnameSrc:    name,
 		Fname:       slug + ".html",
@@ -208,8 +205,7 @@ func parsePostFile(name, srcDir, assetsDir string, cfg *Config, policy *bluemond
 		Title:       title,
 		Epoch:       epoch,
 		Date:        date,
-		FContent:    content,
-		HTMLContent: html,
+		HTMLContent: buf.String(),
 		Permalink:   cfg.SiteURL + "/" + slug + ".html",
 	}, true, nil
 }
@@ -246,17 +242,4 @@ func WritePostPages(posts []Post, destDir string, cfg *Config, r *Renderer) (int
 		written++
 	}
 	return written, nil
-}
-
-// ParseFilenameEpoch is a small check helper for tests.
-func ParseFilenameEpoch(stem string) (date string, epoch int64, ok bool) {
-	parts := strings.Split(stem, "_")
-	if len(parts) < 2 {
-		return "", 0, false
-	}
-	epoch, err := strconv.ParseInt(parts[1], 10, 64)
-	if err != nil {
-		return "", 0, false
-	}
-	return parts[0], epoch, true
 }

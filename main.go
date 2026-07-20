@@ -33,31 +33,20 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 
-	mdDir, err := internal.EnsureDir(cfg.MDDir)
-	if err != nil {
-		log.Fatal(err)
+	for _, dir := range []string{cfg.MDDir, cfg.BuildDir, "build.temp", cfg.AssetsDir} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			log.Fatal(err)
+		}
 	}
-	buildDir, err := internal.EnsureDir(cfg.BuildDir)
-	if err != nil {
-		log.Fatal(err)
-	}
-	buildTemp, err := internal.EnsureDir("build.temp")
-	if err != nil {
-		log.Fatal(err)
-	}
-	assetsDir, err := internal.EnsureDir(cfg.AssetsDir)
-	if err != nil {
-		log.Fatal(err)
-	}
+	mdDir, buildDir, buildTemp, assetsDir := cfg.MDDir, cfg.BuildDir, "build.temp", cfg.AssetsDir
 
-	policy := internal.SanitizePolicy()
 	r, err := internal.NewRenderer(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	log.Printf("Parsing Markdown files from %q", mdDir)
-	postList, err := internal.ParsePosts(mdDir, assetsDir, cfg, policy)
+	postList, err := internal.ParsePosts(mdDir, assetsDir, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -122,7 +111,7 @@ func main() {
 		log.Fatal(err)
 	}
 	if err := r.RenderWrite([]string{
-		internal.SanitizeHTML(indexBuf.String(), policy),
+		indexBuf.String(),
 		postListHTML,
 		feedContent.String(),
 	}, filepath.Join(buildTemp, "index.html")); err != nil {

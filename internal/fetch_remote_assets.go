@@ -54,8 +54,8 @@ func LocalizeRemoteAssets(text, destDir string) string {
 			subdir = "img"
 		}
 		fname := path.Base(u.Path)
-		dir, err := EnsureDir(filepath.Join(destDir, subdir))
-		if err != nil {
+		dir := filepath.Join(destDir, subdir)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
 			log.Printf("Failed to create dir: %v", err)
 			continue
 		}

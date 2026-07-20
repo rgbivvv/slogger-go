@@ -18,7 +18,7 @@ func main() {
 	flag.Parse()
 
 	postsDir := "posts"
-	if _, err := internal.EnsureDir(postsDir); err != nil {
+	if err := os.MkdirAll(postsDir, 0o755); err != nil {
 		log.Fatal(err)
 	}
 
