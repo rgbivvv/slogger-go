@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -19,7 +20,10 @@ var (
 	srcAttr = regexp.MustCompile(`src=['"](https?://[^'"]+)['"]`)
 )
 
-var client = &http.Client{Timeout: 10 * time.Second}
+var (
+	client     = &http.Client{Timeout: 10 * time.Second}
+	downloadMu sync.Mutex
+)
 
 func LocalizeRemoteAssets(text, destDir string) string {
 	urls := map[string]struct{}{}
@@ -56,11 +60,19 @@ func LocalizeRemoteAssets(text, destDir string) string {
 			continue
 		}
 		destPath := filepath.Join(dir, fname)
-		if _, err := os.Stat(destPath); os.IsNotExist(err) {
-			if err := download(raw, destPath); err != nil {
-				log.Printf("Failed to fetch %s: %v", raw, err)
-				continue
+		fetched := func() bool {
+			downloadMu.Lock()
+			defer downloadMu.Unlock()
+			if _, err := os.Stat(destPath); os.IsNotExist(err) {
+				if err := download(raw, destPath); err != nil {
+					log.Printf("Failed to fetch %s: %v", raw, err)
+					return false
+				}
 			}
+			return true
+		}()
+		if !fetched {
+			continue
 		}
 		text = strings.ReplaceAll(text, raw, destPath)
 	}
