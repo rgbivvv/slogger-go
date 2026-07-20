@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -17,6 +18,15 @@ import (
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmsgprefix)
+
+	force := flag.Bool("force", false, "ignore parse cache and rebuild all posts")
+	flag.Parse()
+	if *force {
+		if err := os.RemoveAll(".slogger-cache"); err != nil {
+			log.Fatalf("clear cache: %v", err)
+		}
+		log.Print("cleared parse cache")
+	}
 
 	cfg, err := internal.LoadConfig("config.json")
 	if err != nil {
