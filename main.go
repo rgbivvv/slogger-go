@@ -147,6 +147,11 @@ func main() {
 
 func rssFeed(postList []internal.Post, cfg *internal.Config) string {
 	log.Print("Generating RSS feed")
+	n := cfg.RSSPostsCount
+	if n <= 0 || n > len(postList) {
+		n = len(postList)
+	}
+	postList = postList[:n]
 	var items strings.Builder
 	for _, p := range postList {
 		permalink := cfg.SiteURL + "/" + p.Slug + ".html"

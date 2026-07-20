@@ -14,6 +14,7 @@ type Config struct {
 	AssetsDir          string `json:"assets_dir"`
 	CopyrightName      string `json:"copyright_name"`
 	FeaturedPostsCount int    `json:"featured_posts_count"`
+	RSSPostsCount      int    `json:"rss_posts_count"`
 }
 
 func LoadConfig(path string) (*Config, error) {
