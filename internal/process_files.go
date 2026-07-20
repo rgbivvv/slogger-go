@@ -228,6 +228,7 @@ func WritePostPages(posts []Post, destDir, cacheDir string, cfg *Config, r *Rend
 		}
 		if slug != base {
 			post.Slug = slug
+			post.Title = slug
 			post.Fname = slug + ".html"
 			post.Permalink = cfg.SiteURL + "/" + slug + ".html"
 		}

@@ -221,3 +221,31 @@ func TestWritePostPagesCacheCopy(t *testing.T) {
 		t.Fatal("expected json cache pruned for deleted post")
 	}
 }
+
+func TestWritePostPagesCollisionUpdatesTitle(t *testing.T) {
+	src := t.TempDir()
+	assets := t.TempDir()
+	cache := t.TempDir()
+	dest := t.TempDir()
+	cfg := &Config{SiteURL: "https://example.com", SiteName: "example.com"}
+	r := testRenderer(cfg)
+
+	for _, name := range []string{"20260720_100.md", "20260720_200.md"} {
+		if err := os.WriteFile(filepath.Join(src, name), []byte("body"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	posts, err := parsePosts(src, assets, cfg, cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := WritePostPages(posts, dest, cache, cfg, r); err != nil {
+		t.Fatal(err)
+	}
+	if posts[0].Title != "20260720" || posts[0].Slug != "20260720" {
+		t.Fatalf("first: Title=%q Slug=%q", posts[0].Title, posts[0].Slug)
+	}
+	if posts[1].Title != "20260720_1" || posts[1].Slug != "20260720_1" {
+		t.Fatalf("second: Title=%q Slug=%q", posts[1].Title, posts[1].Slug)
+	}
+}
