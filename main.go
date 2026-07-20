@@ -33,12 +33,12 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 
-	for _, dir := range []string{cfg.MDDir, cfg.BuildDir, "build.temp", cfg.AssetsDir} {
+	for _, dir := range []string{cfg.MDDir, cfg.BuildDir, cfg.AssetsDir} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			log.Fatal(err)
 		}
 	}
-	mdDir, buildDir, buildTemp, assetsDir := cfg.MDDir, cfg.BuildDir, "build.temp", cfg.AssetsDir
+	mdDir, buildDir, assetsDir := cfg.MDDir, cfg.BuildDir, cfg.AssetsDir
 
 	r, err := internal.NewRenderer(cfg)
 	if err != nil {
@@ -51,11 +51,18 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := copyTree(assetsDir, filepath.Join(buildTemp, assetsDir)); err != nil {
+	assetsOut := filepath.Join(buildDir, assetsDir)
+	if err := os.MkdirAll(assetsOut, 0o755); err != nil {
+		log.Fatal(err)
+	}
+	if err := internal.WipeDirFilesOnly(assetsOut); err != nil {
+		log.Fatal(err)
+	}
+	if err := copyTree(assetsDir, assetsOut); err != nil {
 		log.Fatal(err)
 	}
 
-	written, copied, err := internal.WritePostPages(postList, buildTemp, ".slogger-cache", cfg, r)
+	written, copied, err := internal.WritePostPages(postList, buildDir, ".slogger-cache", cfg, r)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -114,21 +121,19 @@ func main() {
 		indexBuf.String(),
 		postListHTML,
 		feedContent.String(),
-	}, filepath.Join(buildTemp, "index.html")); err != nil {
+	}, filepath.Join(buildDir, "index.html")); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := os.WriteFile(filepath.Join(buildTemp, "feed.xml"), []byte(rssFeed(postList, cfg)), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(buildDir, "feed.xml"), []byte(rssFeed(postList, cfg)), 0o644); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := internal.WipeDirFilesOnly(buildDir); err != nil {
-		log.Fatal(err)
+	keep := map[string]struct{}{"index.html": {}}
+	for _, p := range postList {
+		keep[p.Fname] = struct{}{}
 	}
-	if err := copyTree(buildTemp, buildDir); err != nil {
-		log.Fatal(err)
-	}
-	if err := os.RemoveAll(buildTemp); err != nil {
+	if err := internal.PruneStaleHTML(buildDir, keep); err != nil {
 		log.Fatal(err)
 	}
 	log.Print("Done.")

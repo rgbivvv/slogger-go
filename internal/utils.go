@@ -20,6 +20,29 @@ func WipeDirFilesOnly(root string) error {
 	})
 }
 
+func PruneStaleHTML(buildDir string, keep map[string]struct{}) error {
+	entries, err := os.ReadDir(buildDir)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if filepath.Ext(name) != ".html" {
+			continue
+		}
+		if _, ok := keep[name]; ok {
+			continue
+		}
+		if err := os.Remove(filepath.Join(buildDir, name)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 var nonAlnum = regexp.MustCompile(`[^a-z0-9]+`)
 var multiSep = regexp.MustCompile(`_+`)
 
