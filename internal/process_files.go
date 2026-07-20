@@ -24,6 +24,7 @@ type Post struct {
 	Date        string
 	HTMLContent string
 	Permalink   string
+	PageCached  bool
 }
 
 func ParsePosts(srcDir, assetsDir string, cfg *Config) ([]Post, error) {
@@ -210,8 +211,7 @@ func parsePostFile(name, srcDir, assetsDir string, cfg *Config, md goldmark.Mark
 	}, true, nil
 }
 
-func WritePostPages(posts []Post, destDir string, cfg *Config, r *Renderer) (int, error) {
-	written := 0
+func WritePostPages(posts []Post, destDir, cacheDir string, cfg *Config, r *Renderer) (written, copied int, err error) {
 	for i := range posts {
 		post := &posts[i]
 		base := post.Slug
@@ -231,15 +231,27 @@ func WritePostPages(posts []Post, destDir string, cfg *Config, r *Renderer) (int
 			post.Fname = slug + ".html"
 			post.Permalink = cfg.SiteURL + "/" + slug + ".html"
 		}
+
+		if post.PageCached && cachedPageExists(cacheDir, post.FnameSrc) {
+			if err := copyCachedPage(cacheDir, post.FnameSrc, fpath); err != nil {
+				return written, copied, err
+			}
+			copied++
+			continue
+		}
+
 		header := fmt.Sprintf(
 			`<table><tbody><tr><td>https://<a href="%s">%s</a>/%s</td></tr></tbody></table>`,
 			cfg.SiteURL, cfg.SiteName, post.Fname,
 		)
 		back := `<p><a href="/">&#8604; Back to index</a></p>`
 		if err := r.RenderWrite([]string{header, post.HTMLContent, back}, fpath); err != nil {
-			return written, err
+			return written, copied, err
+		}
+		if err := saveCachedPage(cacheDir, post.FnameSrc, fpath); err != nil {
+			return written, copied, err
 		}
 		written++
 	}
-	return written, nil
+	return written, copied, nil
 }

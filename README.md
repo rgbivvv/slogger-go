@@ -32,3 +32,23 @@ Create a file called `index.md`. Example:
 
 This is my slogger site.
 ```
+
+Build the site:
+
+```bash
+go build -o slogger .
+./slogger
+```
+
+On subsequent builds, unchanged posts are served from `.slogger-cache/` — markdown parsing and individual page HTML generation are skipped for those posts. The log will show cache hits and page copies:
+
+```
+cache: 5 hit, 0 miss
+pages: 5 copied, 0 written
+```
+
+Use `-force` to clear the cache and rebuild everything. Run this after changing `header.html`, `footer.html`, or site config values (`site_name`, `site_url`), since those are not tracked by the cache:
+
+```bash
+./slogger -force
+```

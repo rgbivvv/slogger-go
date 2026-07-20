@@ -88,3 +88,106 @@ func TestParsePostsCacheHitMiss(t *testing.T) {
 		t.Fatal("cache file not rewritten after mtime miss")
 	}
 }
+
+func testRenderer(cfg *Config) *Renderer {
+	return &Renderer{
+		header: "<html><body>",
+		footer: "</body></html>",
+		vars: map[string]string{
+			"title":          cfg.SiteName,
+			"site_name":      cfg.SiteName,
+			"copyright_name": cfg.CopyrightName,
+		},
+	}
+}
+
+func TestWritePostPagesCacheCopy(t *testing.T) {
+	src := t.TempDir()
+	assets := t.TempDir()
+	cache := t.TempDir()
+	dest := t.TempDir()
+	cfg := &Config{SiteURL: "https://example.com", SiteName: "example.com"}
+	r := testRenderer(cfg)
+
+	srcName := "20260101_100_hello.md"
+	srcName2 := "20260102_200_other.md"
+	path := filepath.Join(src, srcName)
+	path2 := filepath.Join(src, srcName2)
+	if err := os.WriteFile(path, []byte("hello world"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path2, []byte("other post"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	posts, err := parsePosts(src, assets, cfg, cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	written, copied, err := WritePostPages(posts, dest, cache, cfg, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if written != 2 || copied != 0 {
+		t.Fatalf("first write: written=%d copied=%d", written, copied)
+	}
+	ppath := pageCachePath(cache, srcName)
+	info1, err := os.Stat(ppath)
+	if err != nil {
+		t.Fatal("expected page cache file:", err)
+	}
+
+	posts2, err := parsePosts(src, assets, cfg, cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range posts2 {
+		if !p.PageCached {
+			t.Fatalf("expected PageCached for %s", p.FnameSrc)
+		}
+	}
+	dest2 := t.TempDir()
+	written, copied, err = WritePostPages(posts2, dest2, cache, cfg, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if written != 0 || copied != 2 {
+		t.Fatalf("second write: written=%d copied=%d", written, copied)
+	}
+	info2, err := os.Stat(ppath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info1.ModTime().Equal(info2.ModTime()) {
+		t.Fatal("page cache file rewritten on hit")
+	}
+
+	if err := os.WriteFile(path, []byte("hello world edited"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	posts3, err := parsePosts(src, assets, cfg, cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dest3 := t.TempDir()
+	written, copied, err = WritePostPages(posts3, dest3, cache, cfg, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if written != 1 || copied != 1 {
+		t.Fatalf("after edit: written=%d copied=%d, want 1 written 1 copied", written, copied)
+	}
+
+	if err := os.Remove(path2); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := parsePosts(src, assets, cfg, cache); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(pageCachePath(cache, srcName2)); !os.IsNotExist(err) {
+		t.Fatal("expected page cache pruned for deleted post")
+	}
+	if _, err := os.Stat(cacheFilePath(cache, srcName2)); !os.IsNotExist(err) {
+		t.Fatal("expected json cache pruned for deleted post")
+	}
+}

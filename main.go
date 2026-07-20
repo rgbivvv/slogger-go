@@ -19,13 +19,13 @@ import (
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmsgprefix)
 
-	force := flag.Bool("force", false, "ignore parse cache and rebuild all posts")
+	force := flag.Bool("force", false, "ignore cache and rebuild all posts")
 	flag.Parse()
 	if *force {
 		if err := os.RemoveAll(".slogger-cache"); err != nil {
 			log.Fatalf("clear cache: %v", err)
 		}
-		log.Print("cleared parse cache")
+		log.Print("cleared cache")
 	}
 
 	cfg, err := internal.LoadConfig("config.json")
@@ -55,11 +55,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	n, err := internal.WritePostPages(postList, buildTemp, cfg, r)
+	written, copied, err := internal.WritePostPages(postList, buildTemp, ".slogger-cache", cfg, r)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Wrote a total of %d posts", n)
+	log.Printf("pages: %d copied, %d written", copied, written)
 
 	// newest first for index
 	for i, j := 0, len(postList)-1; i < j; i, j = i+1, j-1 {

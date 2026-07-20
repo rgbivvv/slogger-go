@@ -2,6 +2,7 @@ package internal
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -30,6 +31,7 @@ func (c cachedPost) toPost() Post {
 		Date:        c.Date,
 		HTMLContent: c.HTMLContent,
 		Permalink:   c.Permalink,
+		PageCached:  true,
 	}
 }
 
@@ -64,6 +66,44 @@ func loadCachedPost(cacheDir, srcName string) (cachedPost, bool) {
 	return c, true
 }
 
+func pageCachePath(cacheDir, srcName string) string {
+	return filepath.Join(cacheDir, "pages", srcName+".html")
+}
+
+func cachedPageExists(cacheDir, srcName string) bool {
+	_, err := os.Stat(pageCachePath(cacheDir, srcName))
+	return err == nil
+}
+
+func saveCachedPage(cacheDir, srcName, srcPath string) error {
+	if err := os.MkdirAll(filepath.Join(cacheDir, "pages"), 0o755); err != nil {
+		return err
+	}
+	return copyFile(srcPath, pageCachePath(cacheDir, srcName))
+}
+
+func copyCachedPage(cacheDir, srcName, destPath string) error {
+	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+		return err
+	}
+	return copyFile(pageCachePath(cacheDir, srcName), destPath)
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = io.Copy(out, in)
+	return err
+}
+
 func saveCachedPost(cacheDir, srcName string, c cachedPost) error {
 	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
 		return err
@@ -96,6 +136,29 @@ func pruneCache(cacheDir string, alive map[string]struct{}) error {
 			continue
 		}
 		_ = os.Remove(filepath.Join(cacheDir, name))
+		_ = os.Remove(pageCachePath(cacheDir, src))
+	}
+	pagesDir := filepath.Join(cacheDir, "pages")
+	pageEntries, err := os.ReadDir(pagesDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	for _, e := range pageEntries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if filepath.Ext(name) != ".html" {
+			continue
+		}
+		src := name[:len(name)-len(".html")]
+		if _, ok := alive[src]; ok {
+			continue
+		}
+		_ = os.Remove(filepath.Join(pagesDir, name))
 	}
 	return nil
 }
