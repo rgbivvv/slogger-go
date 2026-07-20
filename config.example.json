@@ -1,0 +1,10 @@
+{
+  "site_name": "example.com",
+  "site_url": "https://example.com",
+  "site_description": "This is my slogger site",
+  "build_dir": "build",
+  "md_dir": "posts",
+  "assets_dir": "public",
+  "copyright_name": "example.com",
+  "featured_posts_count": 5
+}
