@@ -26,13 +26,11 @@ func main() {
 		log.Print("cleared cache")
 	}
 
-	log.Print("Loading config.json")
 	cfg, err := internal.LoadConfig("config.json")
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}
 
-	log.Printf("Ensuring directories: md=%q build=%q assets=%q", cfg.MDDir, cfg.BuildDir, cfg.AssetsDir)
 	for _, dir := range []string{cfg.MDDir, cfg.BuildDir, cfg.AssetsDir} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			log.Fatal(err)
@@ -40,7 +38,6 @@ func main() {
 	}
 	mdDir, buildDir, assetsDir := cfg.MDDir, cfg.BuildDir, cfg.AssetsDir
 
-	log.Print("Loading header.html and footer.html")
 	r, err := internal.NewRenderer(cfg)
 	if err != nil {
 		log.Fatal(err)
@@ -129,7 +126,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Print("Pruning stale HTML from build dir")
 	keep := map[string]struct{}{"index.html": {}}
 	for _, p := range postList {
 		keep[p.Fname] = struct{}{}
