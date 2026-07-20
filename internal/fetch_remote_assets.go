@@ -36,7 +36,7 @@ func LocalizeRemoteAssets(text, destDir string) string {
 
 	for raw := range urls {
 		if !strings.HasPrefix(raw, "http://") && !strings.HasPrefix(raw, "https://") {
-			log.Printf("Skipping local reference: %s", raw)
+			log.Printf("skipping local reference: %s", raw)
 			continue
 		}
 		u, err := url.Parse(raw)
@@ -56,7 +56,7 @@ func LocalizeRemoteAssets(text, destDir string) string {
 		fname := path.Base(u.Path)
 		dir := filepath.Join(destDir, subdir)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
-			log.Printf("Failed to create dir: %v", err)
+			log.Printf("failed to create dir: %v", err)
 			continue
 		}
 		destPath := filepath.Join(dir, fname)
@@ -65,7 +65,7 @@ func LocalizeRemoteAssets(text, destDir string) string {
 			defer downloadMu.Unlock()
 			if _, err := os.Stat(destPath); os.IsNotExist(err) {
 				if err := download(raw, destPath); err != nil {
-					log.Printf("Failed to fetch %s: %v", raw, err)
+					log.Printf("failed to fetch %s: %v", raw, err)
 					return false
 				}
 			}
@@ -80,7 +80,7 @@ func LocalizeRemoteAssets(text, destDir string) string {
 }
 
 func download(rawURL, dest string) error {
-	log.Printf("Downloading file %s to %s", rawURL, dest)
+	log.Printf("downloading file %s to %s", rawURL, dest)
 	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
 	if err != nil {
 		return err

@@ -19,7 +19,7 @@ func main() {
 	force := flag.Bool("force", false, "ignore cache and rebuild all posts")
 	flag.Parse()
 	if *force {
-		log.Print("Clearing cache (.slogger-cache)")
+		log.Print("clearing cache (.slogger-cache)")
 		if err := os.RemoveAll(".slogger-cache"); err != nil {
 			log.Fatalf("clear cache: %v", err)
 		}
@@ -43,27 +43,27 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("Parsing Markdown files from %q", mdDir)
+	log.Printf("parsing markdown files from %q", mdDir)
 	postList, err := internal.ParsePosts(mdDir, assetsDir, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Found %d posts", len(postList))
+	log.Printf("found %d posts", len(postList))
 
 	assetsOut := filepath.Join(buildDir, assetsDir)
-	log.Printf("Syncing assets %q -> %q", assetsDir, assetsOut)
+	log.Printf("syncing assets %q -> %q", assetsDir, assetsOut)
 	if err := internal.SyncTree(assetsDir, assetsOut); err != nil {
 		log.Fatal(err)
 	}
 
-	log.Printf("Writing post pages to %q", buildDir)
+	log.Printf("writing post pages to %q", buildDir)
 	written, copied, err := internal.WritePostPages(postList, buildDir, ".slogger-cache", cfg, r)
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Printf("pages: %d copied, %d written", copied, written)
 
-	log.Print("Building index.html")
+	log.Print("building index.html")
 	// newest first for index
 	for i, j := 0, len(postList)-1; i < j; i, j = i+1, j-1 {
 		postList[i], postList[j] = postList[j], postList[i]
@@ -121,7 +121,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Print("Generating RSS feed")
+	log.Print("generating rss feed")
 	if err := os.WriteFile(filepath.Join(buildDir, "feed.xml"), []byte(rssFeed(postList, cfg)), 0o644); err != nil {
 		log.Fatal(err)
 	}
@@ -133,7 +133,7 @@ func main() {
 	if err := internal.PruneStaleHTML(buildDir, keep); err != nil {
 		log.Fatal(err)
 	}
-	log.Print("Done.")
+	log.Print("done.")
 }
 
 func rssFeed(postList []internal.Post, cfg *internal.Config) string {

@@ -171,13 +171,13 @@ func parsePostFile(name, srcDir, assetsDir string, cfg *Config, md goldmark.Mark
 	stem := strings.TrimSuffix(name, filepath.Ext(name))
 	parts := strings.Split(stem, "_")
 	if len(parts) < 2 {
-		log.Printf("Skipping %s: expected date_epoch[_title]", name)
+		log.Printf("skipping %s: expected date_epoch[_title]", name)
 		return Post{}, false, nil
 	}
 	date := parts[0]
 	epoch, err := strconv.ParseInt(parts[1], 10, 64)
 	if err != nil {
-		log.Printf("Skipping %s: epoch is not an integer", name)
+		log.Printf("skipping %s: epoch is not an integer", name)
 		return Post{}, false, nil
 	}
 	titleParts := append([]string{date}, parts[2:]...)
