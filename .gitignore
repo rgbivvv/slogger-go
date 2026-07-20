@@ -6,6 +6,7 @@ index.md
 header.html
 footer.html
 config.json
+.slogger-cache/
 
 # Built binaries
 /slogger

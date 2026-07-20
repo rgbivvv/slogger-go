@@ -29,6 +29,10 @@ type Post struct {
 }
 
 func ParsePosts(srcDir, assetsDir string, cfg *Config, policy *bluemonday.Policy) ([]Post, error) {
+	return parsePosts(srcDir, assetsDir, cfg, policy, ".slogger-cache")
+}
+
+func parsePosts(srcDir, assetsDir string, cfg *Config, policy *bluemonday.Policy, cacheDir string) ([]Post, error) {
 	entries, err := os.ReadDir(srcDir)
 	if err != nil {
 		return nil, err
@@ -44,20 +48,73 @@ func ParsePosts(srcDir, assetsDir string, cfg *Config, policy *bluemonday.Policy
 		return nil, nil
 	}
 
+	alive := make(map[string]struct{}, len(jobs))
+	var posts []Post
+	var misses []string
+	hits := 0
+
+	for _, name := range jobs {
+		alive[name] = struct{}{}
+		path := filepath.Join(srcDir, name)
+		info, err := os.Stat(path)
+		if err != nil {
+			continue
+		}
+		if info.Size() <= 1 {
+			_ = os.Remove(path)
+			delete(alive, name)
+			continue
+		}
+		mtimeNano := info.ModTime().UnixNano()
+		size := info.Size()
+		if c, ok := loadCachedPost(cacheDir, name); ok && c.MtimeNano == mtimeNano && c.Size == size {
+			posts = append(posts, c.toPost())
+			hits++
+			continue
+		}
+		misses = append(misses, name)
+	}
+
+	if len(misses) > 0 {
+		parsed, err := parsePostMisses(misses, srcDir, assetsDir, cfg, policy)
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range parsed {
+			path := filepath.Join(srcDir, p.FnameSrc)
+			info, err := os.Stat(path)
+			if err != nil {
+				continue
+			}
+			_ = saveCachedPost(cacheDir, p.FnameSrc, postToCached(p, info.ModTime().UnixNano(), info.Size()))
+			posts = append(posts, p)
+		}
+	}
+
+	if err := pruneCache(cacheDir, alive); err != nil {
+		return nil, err
+	}
+
+	log.Printf("cache: %d hit, %d miss", hits, len(misses))
+	sort.Slice(posts, func(i, j int) bool { return posts[i].Epoch < posts[j].Epoch })
+	return posts, nil
+}
+
+func parsePostMisses(misses []string, srcDir, assetsDir string, cfg *Config, policy *bluemonday.Policy) ([]Post, error) {
 	n := runtime.NumCPU()
 	if n < 1 {
 		n = 1
 	}
-	if n > len(jobs) {
-		n = len(jobs)
+	if n > len(misses) {
+		n = len(misses)
 	}
 
 	type result struct {
 		post Post
 		err  error
 	}
-	jobCh := make(chan string, len(jobs))
-	resCh := make(chan result, len(jobs))
+	jobCh := make(chan string, len(misses))
+	resCh := make(chan result, len(misses))
 
 	var wg sync.WaitGroup
 	for i := 0; i < n; i++ {
@@ -78,7 +135,7 @@ func ParsePosts(srcDir, assetsDir string, cfg *Config, policy *bluemonday.Policy
 		}()
 	}
 
-	for _, name := range jobs {
+	for _, name := range misses {
 		jobCh <- name
 	}
 	close(jobCh)
@@ -99,7 +156,6 @@ func ParsePosts(srcDir, assetsDir string, cfg *Config, policy *bluemonday.Policy
 	if firstErr != nil {
 		return nil, firstErr
 	}
-	sort.Slice(posts, func(i, j int) bool { return posts[i].Epoch < posts[j].Epoch })
 	return posts, nil
 }
 
