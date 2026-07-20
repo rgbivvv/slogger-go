@@ -19,6 +19,7 @@ func SanitizePolicy() *bluemonday.Policy {
 	p.AllowAttrs("src", "controls").OnElements("audio", "video")
 	p.AllowAttrs("src", "type").OnElements("source")
 	p.AllowURLSchemes("http", "https")
+	p.AllowRelativeURLs(true)
 	return p
 }
 
