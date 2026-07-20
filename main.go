@@ -22,17 +22,20 @@ func main() {
 	force := flag.Bool("force", false, "ignore cache and rebuild all posts")
 	flag.Parse()
 	if *force {
+		log.Print("Clearing cache (.slogger-cache)")
 		if err := os.RemoveAll(".slogger-cache"); err != nil {
 			log.Fatalf("clear cache: %v", err)
 		}
 		log.Print("cleared cache")
 	}
 
+	log.Print("Loading config.json")
 	cfg, err := internal.LoadConfig("config.json")
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}
 
+	log.Printf("Ensuring directories: md=%q build=%q assets=%q", cfg.MDDir, cfg.BuildDir, cfg.AssetsDir)
 	for _, dir := range []string{cfg.MDDir, cfg.BuildDir, cfg.AssetsDir} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			log.Fatal(err)
@@ -40,6 +43,7 @@ func main() {
 	}
 	mdDir, buildDir, assetsDir := cfg.MDDir, cfg.BuildDir, cfg.AssetsDir
 
+	log.Print("Loading header.html and footer.html")
 	r, err := internal.NewRenderer(cfg)
 	if err != nil {
 		log.Fatal(err)
@@ -50,8 +54,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("Found %d posts", len(postList))
 
 	assetsOut := filepath.Join(buildDir, assetsDir)
+	log.Printf("Copying assets %q -> %q", assetsDir, assetsOut)
 	if err := os.MkdirAll(assetsOut, 0o755); err != nil {
 		log.Fatal(err)
 	}
@@ -62,12 +68,14 @@ func main() {
 		log.Fatal(err)
 	}
 
+	log.Printf("Writing post pages to %q", buildDir)
 	written, copied, err := internal.WritePostPages(postList, buildDir, ".slogger-cache", cfg, r)
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Printf("pages: %d copied, %d written", copied, written)
 
+	log.Print("Building index.html")
 	// newest first for index
 	for i, j := 0, len(postList)-1; i < j; i, j = i+1, j-1 {
 		postList[i], postList[j] = postList[j], postList[i]
@@ -125,10 +133,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	log.Print("Generating RSS feed")
 	if err := os.WriteFile(filepath.Join(buildDir, "feed.xml"), []byte(rssFeed(postList, cfg)), 0o644); err != nil {
 		log.Fatal(err)
 	}
 
+	log.Print("Pruning stale HTML from build dir")
 	keep := map[string]struct{}{"index.html": {}}
 	for _, p := range postList {
 		keep[p.Fname] = struct{}{}
@@ -140,7 +150,6 @@ func main() {
 }
 
 func rssFeed(postList []internal.Post, cfg *internal.Config) string {
-	log.Print("Generating RSS feed")
 	n := cfg.RSSPostsCount
 	if n <= 0 || n > len(postList) {
 		n = len(postList)
