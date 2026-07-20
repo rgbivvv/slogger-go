@@ -4,9 +4,39 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
+
+func TestParsePostsKeepsMediaHTML(t *testing.T) {
+	src := t.TempDir()
+	assets := t.TempDir()
+	cache := t.TempDir()
+	cfg := &Config{SiteURL: "https://example.com"}
+	body := `<audio controls><source src="a.wav" type="audio/wav"></audio>
+<video controls src="v.mp4"></video>`
+	path := filepath.Join(src, "20260101_100_media.md")
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	posts, err := parsePosts(src, assets, cfg, cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(posts) != 1 {
+		t.Fatalf("got %d posts", len(posts))
+	}
+	html := posts[0].HTMLContent
+	for _, want := range []string{"<audio controls>", "<source src=\"a.wav\"", "<video controls src=\"v.mp4\">"} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("HTML missing %q:\n%s", want, html)
+		}
+	}
+	if strings.Contains(html, "raw HTML omitted") {
+		t.Fatalf("raw HTML was stripped:\n%s", html)
+	}
+}
 
 func TestParsePostsParallelSorted(t *testing.T) {
 	src := t.TempDir()

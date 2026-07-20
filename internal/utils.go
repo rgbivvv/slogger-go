@@ -8,16 +8,67 @@ import (
 	"unicode"
 )
 
-func WipeDirFilesOnly(root string) error {
-	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+// SyncTree copies src into dst, skipping files with matching size whose
+// destination mtime is at least as new as the source. Removes dest entries
+// that no longer exist under src.
+func SyncTree(src, dst string) error {
+	seen := make(map[string]struct{})
+	if err := filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		if rel == "." {
+			return os.MkdirAll(dst, 0o755)
+		}
+		seen[rel] = struct{}{}
+		target := filepath.Join(dst, rel)
 		if info.IsDir() {
+			return os.MkdirAll(target, 0o755)
+		}
+		if sameFile(info, target) {
 			return nil
+		}
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return err
+		}
+		return copyFile(path, target)
+	}); err != nil {
+		return err
+	}
+	return filepath.Walk(dst, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(dst, path)
+		if err != nil {
+			return err
+		}
+		if rel == "." {
+			return nil
+		}
+		if _, ok := seen[rel]; ok {
+			return nil
+		}
+		if info.IsDir() {
+			if err := os.RemoveAll(path); err != nil {
+				return err
+			}
+			return filepath.SkipDir
 		}
 		return os.Remove(path)
 	})
+}
+
+func sameFile(srcInfo os.FileInfo, dstPath string) bool {
+	dstInfo, err := os.Stat(dstPath)
+	if err != nil || dstInfo.IsDir() {
+		return false
+	}
+	return srcInfo.Size() == dstInfo.Size() && !srcInfo.ModTime().After(dstInfo.ModTime())
 }
 
 func PruneStaleHTML(buildDir string, keep map[string]struct{}) error {

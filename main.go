@@ -4,14 +4,11 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/yuin/goldmark"
 
 	"slogger-go/internal"
 )
@@ -57,14 +54,8 @@ func main() {
 	log.Printf("Found %d posts", len(postList))
 
 	assetsOut := filepath.Join(buildDir, assetsDir)
-	log.Printf("Copying assets %q -> %q", assetsDir, assetsOut)
-	if err := os.MkdirAll(assetsOut, 0o755); err != nil {
-		log.Fatal(err)
-	}
-	if err := internal.WipeDirFilesOnly(assetsOut); err != nil {
-		log.Fatal(err)
-	}
-	if err := copyTree(assetsDir, assetsOut); err != nil {
+	log.Printf("Syncing assets %q -> %q", assetsDir, assetsOut)
+	if err := internal.SyncTree(assetsDir, assetsOut); err != nil {
 		log.Fatal(err)
 	}
 
@@ -122,7 +113,7 @@ func main() {
 		log.Fatal(err)
 	}
 	var indexBuf bytes.Buffer
-	if err := goldmark.Convert(indexMD, &indexBuf); err != nil {
+	if err := internal.NewMarkdown().Convert(indexMD, &indexBuf); err != nil {
 		log.Fatal(err)
 	}
 	if err := r.RenderWrite([]string{
@@ -186,33 +177,3 @@ func rssFeed(postList []internal.Post, cfg *internal.Config) string {
     `, cfg.SiteName, cfg.SiteURL, cfg.SiteDescription, items.String())
 }
 
-func copyTree(src, dst string) error {
-	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, err := filepath.Rel(src, path)
-		if err != nil {
-			return err
-		}
-		target := filepath.Join(dst, rel)
-		if info.IsDir() {
-			return os.MkdirAll(target, 0o755)
-		}
-		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-			return err
-		}
-		in, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		defer in.Close()
-		out, err := os.Create(target)
-		if err != nil {
-			return err
-		}
-		defer out.Close()
-		_, err = io.Copy(out, in)
-		return err
-	})
-}

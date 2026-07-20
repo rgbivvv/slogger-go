@@ -120,7 +120,7 @@ func parsePostMisses(misses []string, srcDir, assetsDir string, cfg *Config) ([]
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			md := goldmark.New()
+			md := NewMarkdown()
 			for name := range jobCh {
 				post, ok, err := parsePostFile(name, srcDir, assetsDir, cfg, md)
 				if err != nil {
