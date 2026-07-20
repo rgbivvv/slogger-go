@@ -10,17 +10,19 @@ Inspired by WNOADIARWB's [slog of thoughts](https://wnoadiarwb.us) and Bradley T
 
 This project is under active development, so expect some bugs when using it.
 
-Create a `config.py` in `lib/` that defines the following variables:
+Copy `config.example.json` to `config.json` and edit as needed:
 
-```python
-SITE_NAME="example.com"
-SITE_URL="https://example.com"
-SITE_DESCRIPTION="This is my slogger site"
-BUILD_DIR="build"
-MD_DIR="posts"
-ASSETS_DIR="public"
-COPYRIGHT_NAME="example.com"
-FEATURED_POSTS_COUNT=5
+```json
+{
+  "site_name": "example.com",
+  "site_url": "https://example.com",
+  "site_description": "This is my slogger site",
+  "build_dir": "build",
+  "md_dir": "posts",
+  "assets_dir": "public",
+  "copyright_name": "example.com",
+  "featured_posts_count": 5
+}
 ```
 
 Create a file called `index.md`. Example:
