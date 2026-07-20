@@ -230,7 +230,13 @@ func TestWritePostPagesCollisionUpdatesTitle(t *testing.T) {
 	cfg := &Config{SiteURL: "https://example.com", SiteName: "example.com"}
 	r := testRenderer(cfg)
 
-	for _, name := range []string{"20260720_100.md", "20260720_200.md"} {
+	// Leftover HTML from prior builds must not steal collision suffixes.
+	for _, stale := range []string{"20260720_1.html", "20260720_2.html", "20260720_5.html"} {
+		if err := os.WriteFile(filepath.Join(dest, stale), []byte("stale"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, name := range []string{"20260720_100.md", "20260720_200.md", "20260720_300.md"} {
 		if err := os.WriteFile(filepath.Join(src, name), []byte("body"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -242,10 +248,10 @@ func TestWritePostPagesCollisionUpdatesTitle(t *testing.T) {
 	if _, _, err := WritePostPages(posts, dest, cache, cfg, r); err != nil {
 		t.Fatal(err)
 	}
-	if posts[0].Title != "20260720" || posts[0].Slug != "20260720" {
-		t.Fatalf("first: Title=%q Slug=%q", posts[0].Title, posts[0].Slug)
-	}
-	if posts[1].Title != "20260720_1" || posts[1].Slug != "20260720_1" {
-		t.Fatalf("second: Title=%q Slug=%q", posts[1].Title, posts[1].Slug)
+	want := []string{"20260720", "20260720_1", "20260720_2"}
+	for i, slug := range want {
+		if posts[i].Title != slug || posts[i].Slug != slug {
+			t.Fatalf("post %d: Title=%q Slug=%q want %q", i, posts[i].Title, posts[i].Slug, slug)
+		}
 	}
 }

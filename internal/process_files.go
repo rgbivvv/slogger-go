@@ -212,20 +212,21 @@ func parsePostFile(name, srcDir, assetsDir string, cfg *Config, md goldmark.Mark
 }
 
 func WritePostPages(posts []Post, destDir, cacheDir string, cfg *Config, r *Renderer) (written, copied int, err error) {
+	used := make(map[string]struct{}, len(posts))
 	for i := range posts {
 		post := &posts[i]
 		base := post.Slug
 		slug := base
-		fpath := filepath.Join(destDir, slug+".html")
 		suffix := 1
 		for {
-			if _, err := os.Stat(fpath); os.IsNotExist(err) {
+			if _, ok := used[slug]; !ok {
 				break
 			}
 			slug = fmt.Sprintf("%s_%d", base, suffix)
-			fpath = filepath.Join(destDir, slug+".html")
 			suffix++
 		}
+		used[slug] = struct{}{}
+		fpath := filepath.Join(destDir, slug+".html")
 		if slug != base {
 			post.Slug = slug
 			post.Title = slug
