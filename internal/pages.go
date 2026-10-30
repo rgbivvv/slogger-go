@@ -31,7 +31,9 @@ func NewRenderer(cfg *Config) (*Renderer, error) {
 	}, nil
 }
 
-func (r *Renderer) Render(components []string) string {
+// Render joins header, components and footer. head, if non-empty, is
+// inserted just before the header's </head>.
+func (r *Renderer) Render(head string, components []string) string {
 	parts := make([]string, 0, len(components)+2)
 	parts = append(parts, r.header)
 	parts = append(parts, components...)
@@ -40,9 +42,12 @@ func (r *Renderer) Render(components []string) string {
 	for k, v := range r.vars {
 		page = strings.ReplaceAll(page, "{{"+k+"}}", v)
 	}
+	if head != "" {
+		page = strings.Replace(page, "</head>", head+"</head>", 1)
+	}
 	return page
 }
 
-func (r *Renderer) RenderWrite(components []string, dest string) error {
-	return os.WriteFile(dest, []byte(r.Render(components)), 0o644)
+func (r *Renderer) RenderWrite(head string, components []string, dest string) error {
+	return os.WriteFile(dest, []byte(r.Render(head, components)), 0o644)
 }

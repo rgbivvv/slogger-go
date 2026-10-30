@@ -24,6 +24,8 @@ type Post struct {
 	Date        string
 	HTMLContent string
 	Permalink   string
+	Description string
+	Image       string
 	PageCached  bool
 }
 
@@ -66,7 +68,7 @@ func parsePosts(srcDir, assetsDir string, cfg *Config, cacheDir string) ([]Post,
 		}
 		mtimeNano := info.ModTime().UnixNano()
 		size := info.Size()
-		if c, ok := loadCachedPost(cacheDir, name); ok && c.MtimeNano == mtimeNano && c.Size == size {
+		if c, ok := loadCachedPost(cacheDir, name); ok && c.Version == cacheVersion && c.MtimeNano == mtimeNano && c.Size == size {
 			posts = append(posts, c.toPost())
 			hits++
 			continue
@@ -208,6 +210,8 @@ func parsePostFile(name, srcDir, assetsDir string, cfg *Config, md goldmark.Mark
 		Date:        date,
 		HTMLContent: buf.String(),
 		Permalink:   cfg.SiteURL + "/" + slug + ".html",
+		Description: PostDescription(buf.String()),
+		Image:       PostImage(buf.String(), cfg.SiteURL),
 	}, true, nil
 }
 
@@ -247,7 +251,7 @@ func WritePostPages(posts []Post, destDir, cacheDir string, cfg *Config, r *Rend
 			cfg.SiteURL, cfg.SiteName, post.Fname,
 		)
 		back := `<p><a href="/">&#8604; Back to index</a></p>`
-		if err := r.RenderWrite([]string{header, post.HTMLContent, back}, fpath); err != nil {
+		if err := r.RenderWrite(PostMetaTags(*post, cfg.SiteName), []string{header, post.HTMLContent, back}, fpath); err != nil {
 			return written, copied, err
 		}
 		if err := saveCachedPage(cacheDir, post.FnameSrc, fpath); err != nil {
