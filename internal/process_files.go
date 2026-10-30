@@ -26,7 +26,10 @@ type Post struct {
 	Permalink   string
 	Description string
 	Image       string
-	PageCached  bool
+	// OGTitle overrides Title as og:title; set for posts whose
+	// filename has no title, so previews show text instead of the date.
+	OGTitle    string
+	PageCached bool
 }
 
 func ParsePosts(srcDir, assetsDir string, cfg *Config) ([]Post, error) {
@@ -201,6 +204,10 @@ func parsePostFile(name, srcDir, assetsDir string, cfg *Config, md goldmark.Mark
 	if err := md.Convert([]byte(content), &buf); err != nil {
 		return Post{}, false, err
 	}
+	var ogTitle string
+	if len(parts) == 2 {
+		ogTitle = excerpt(buf.String(), ogTitleMaxLen)
+	}
 	return Post{
 		FnameSrc:    name,
 		Fname:       slug + ".html",
@@ -212,6 +219,7 @@ func parsePostFile(name, srcDir, assetsDir string, cfg *Config, md goldmark.Mark
 		Permalink:   cfg.SiteURL + "/" + slug + ".html",
 		Description: PostDescription(buf.String()),
 		Image:       PostImage(buf.String(), cfg.SiteURL),
+		OGTitle:     ogTitle,
 	}, true, nil
 }
 

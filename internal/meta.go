@@ -7,7 +7,10 @@ import (
 	"strings"
 )
 
-const descriptionMaxLen = 160
+const (
+	descriptionMaxLen = 160
+	ogTitleMaxLen     = 70
+)
 
 var (
 	firstImgSrc = regexp.MustCompile(`(?is)<img\b[^>]*?\bsrc\s*=\s*["']([^"']+)["']`)
@@ -20,16 +23,22 @@ var (
 // PostDescription returns the leading plain text of rendered post HTML,
 // cut at a word boundary to roughly descriptionMaxLen characters.
 func PostDescription(htmlContent string) string {
+	return excerpt(htmlContent, descriptionMaxLen)
+}
+
+// excerpt returns the leading plain text of rendered HTML, cut at a word
+// boundary to roughly maxLen characters.
+func excerpt(htmlContent string, maxLen int) string {
 	s := scriptBlock.ReplaceAllString(htmlContent, " ")
 	s = styleBlock.ReplaceAllString(s, " ")
 	s = blockTag.ReplaceAllString(s, " ")
 	s = anyTag.ReplaceAllString(s, "")
 	s = strings.Join(strings.Fields(html.UnescapeString(s)), " ")
 	runes := []rune(s)
-	if len(runes) <= descriptionMaxLen {
+	if len(runes) <= maxLen {
 		return s
 	}
-	cut := string(runes[:descriptionMaxLen])
+	cut := string(runes[:maxLen])
 	if i := strings.LastIndex(cut, " "); i > 0 {
 		cut = cut[:i]
 	}
@@ -66,7 +75,11 @@ func PostMetaTags(p Post, siteName string) string {
 	}
 	tag("property", "og:type", "article")
 	tag("property", "og:site_name", siteName)
-	tag("property", "og:title", p.Title)
+	title := p.OGTitle
+	if title == "" {
+		title = p.Title
+	}
+	tag("property", "og:title", title)
 	tag("property", "og:url", p.Permalink)
 	tag("property", "og:description", p.Description)
 	tag("name", "description", p.Description)
