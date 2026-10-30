@@ -113,7 +113,7 @@ func main() {
 	if err := internal.NewMarkdown().Convert(indexMD, &indexBuf); err != nil {
 		log.Fatal(err)
 	}
-	if err := r.RenderWrite([]string{
+	if err := r.RenderWrite("", []string{
 		indexBuf.String(),
 		postListHTML,
 		feedContent.String(),
