@@ -9,7 +9,7 @@ import (
 
 // cacheVersion is bumped whenever cached post fields or rendered page output
 // change shape, so older entries are treated as misses and rebuilt.
-const cacheVersion = 1
+const cacheVersion = 2
 
 // ponytail: mtime+size only; content-hash if clock skew or editors rewrite in place without mtime bump.
 type cachedPost struct {
@@ -26,6 +26,7 @@ type cachedPost struct {
 	Permalink   string `json:"permalink"`
 	Description string `json:"description"`
 	Image       string `json:"image"`
+	OGTitle     string `json:"og_title"`
 }
 
 func (c cachedPost) toPost() Post {
@@ -40,6 +41,7 @@ func (c cachedPost) toPost() Post {
 		Permalink:   c.Permalink,
 		Description: c.Description,
 		Image:       c.Image,
+		OGTitle:     c.OGTitle,
 		PageCached:  true,
 	}
 }
@@ -59,6 +61,7 @@ func postToCached(p Post, mtimeNano, size int64) cachedPost {
 		Permalink:   p.Permalink,
 		Description: p.Description,
 		Image:       p.Image,
+		OGTitle:     p.OGTitle,
 	}
 }
 
