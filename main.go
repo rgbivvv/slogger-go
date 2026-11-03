@@ -2,11 +2,14 @@ package main
 
 import (
 	"bytes"
+	"encoding/xml"
 	"flag"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -142,34 +145,62 @@ func rssFeed(postList []internal.Post, cfg *internal.Config) string {
 		n = len(postList)
 	}
 	postList = postList[:n]
+	siteURL := strings.TrimRight(cfg.SiteURL, "/")
 	var items strings.Builder
 	for _, p := range postList {
-		permalink := cfg.SiteURL + "/" + p.Slug + ".html"
+		permalink := xmlEscape(siteURL + "/" + p.Slug + ".html")
 		pub := time.Unix(p.Epoch, 0).UTC().Format("Mon, 02 Jan 2006 15:04:05 GMT")
-		items.WriteString(fmt.Sprintf(`
+		fmt.Fprintf(&items, `
         <item>
             <title>%s</title>
             <link>%s</link>
             <description><![CDATA[%s]]></description>
             <pubDate>%s</pubDate>
-
-
             <guid isPermaLink="true">%s</guid>
-        </item>
-        `, p.Title, permalink, p.HTMLContent, pub, permalink))
+        </item>`, xmlEscape(p.Title), permalink, cdata(absoluteURLs(p.HTMLContent, siteURL)), pub, permalink)
 	}
-	return fmt.Sprintf(`
-<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
     <channel>
         <title>%s</title>
         <link>%s/</link>
         <description>%s</description>
-
-        %s
-        
+        <atom:link href="%s/feed.xml" rel="self" type="application/rss+xml"/>%s
     </channel>
 </rss>
-    `, cfg.SiteName, cfg.SiteURL, cfg.SiteDescription, items.String())
+`, xmlEscape(cfg.SiteName), xmlEscape(siteURL), xmlEscape(cfg.SiteDescription), xmlEscape(siteURL), items.String())
 }
 
+func xmlEscape(s string) string {
+	var b strings.Builder
+	_ = xml.EscapeText(&b, []byte(s))
+	return b.String()
+}
+
+// cdata splits any "]]>" so post HTML can't end the CDATA section early.
+func cdata(s string) string {
+	return strings.ReplaceAll(s, "]]>", "]]]]><![CDATA[>")
+}
+
+var urlAttr = regexp.MustCompile(`(?i)(\b(?:src|href)\s*=\s*)(?:"([^"]*)"|'([^']*)')`)
+
+// absoluteURLs resolves relative src/href values against siteURL, since
+// feed readers have no page URL to resolve them against.
+func absoluteURLs(htmlContent, siteURL string) string {
+	base, err := url.Parse(siteURL + "/")
+	if err != nil {
+		return htmlContent
+	}
+	return urlAttr.ReplaceAllStringFunc(htmlContent, func(m string) string {
+		sub := urlAttr.FindStringSubmatch(m)
+		val, quote := sub[2], `"`
+		if strings.HasPrefix(m[len(sub[1]):], "'") {
+			val, quote = sub[3], "'"
+		}
+		u, err := url.Parse(val)
+		if err != nil || val == "" || strings.HasPrefix(val, "#") || u.Scheme != "" || u.Host != "" {
+			return m
+		}
+		return sub[1] + quote + base.ResolveReference(u).String() + quote
+	})
+}
