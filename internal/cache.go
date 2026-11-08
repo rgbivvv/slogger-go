@@ -9,7 +9,7 @@ import (
 
 // cacheVersion is bumped whenever cached post fields or rendered page output
 // change shape, so older entries are treated as misses and rebuilt.
-const cacheVersion = 2
+const cacheVersion = 3
 
 // ponytail: mtime+size only; content-hash if clock skew or editors rewrite in place without mtime bump.
 type cachedPost struct {

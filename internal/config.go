@@ -15,6 +15,9 @@ type Config struct {
 	CopyrightName      string `json:"copyright_name"`
 	FeaturedPostsCount int    `json:"featured_posts_count"`
 	RSSPostsCount      int    `json:"rss_posts_count"`
+	// IndexPostsCount is how many of the newest posts index.html shows in
+	// full; older ones are only linked. 0 shows every post.
+	IndexPostsCount int `json:"index_posts_count"`
 }
 
 func LoadConfig(path string) (*Config, error) {

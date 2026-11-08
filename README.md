@@ -21,9 +21,18 @@ Copy `config.example.json` to `config.json` and edit as needed:
   "md_dir": "posts",
   "assets_dir": "public",
   "copyright_name": "example.com",
-  "featured_posts_count": 5
+  "featured_posts_count": 5,
+  "rss_posts_count": 20,
+  "index_posts_count": 5
 }
 ```
+
+`index_posts_count` is how many of the newest posts `index.html` shows in full; older posts are only listed as links. Leave it out (or set `0`) to show every post.
+
+### Keeping pages light
+
+- Remote images linked in posts are mirrored into `assets_dir`, and JPEGs/PNGs wider than 1440px are resized (EXIF rotation applied) when mirrored. Files you put in `assets_dir` yourself are not touched.
+- `<img>` tags get `loading="lazy" decoding="async"`, plus `width`/`height` for local images; `<video>` and `<audio>` get `preload="none"`. Any of these you set yourself in a post are kept. Make sure `header.html` has `img { height: auto; }` so the width/height attributes don't stretch images that are scaled down by `max-width`.
 
 Create a file called `index.md`. Example:
 
