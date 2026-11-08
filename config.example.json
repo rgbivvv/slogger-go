@@ -7,5 +7,6 @@
   "assets_dir": "public",
   "copyright_name": "example.com",
   "featured_posts_count": 5,
-  "rss_posts_count": 20
+  "rss_posts_count": 20,
+  "index_posts_count": 5
 }

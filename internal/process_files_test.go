@@ -28,7 +28,7 @@ func TestParsePostsKeepsMediaHTML(t *testing.T) {
 		t.Fatalf("got %d posts", len(posts))
 	}
 	html := posts[0].HTMLContent
-	for _, want := range []string{"<audio controls>", "<source src=\"a.wav\"", "<video controls src=\"v.mp4\">"} {
+	for _, want := range []string{`<audio controls preload="none">`, `<source src="a.wav"`, `<video controls src="v.mp4" preload="none">`} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("HTML missing %q:\n%s", want, html)
 		}

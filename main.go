@@ -97,8 +97,12 @@ func main() {
 		postListHTML += other
 	}
 
+	inline := postList
+	if n := cfg.IndexPostsCount; n > 0 && n < len(inline) {
+		inline = inline[:n]
+	}
 	var feedContent strings.Builder
-	for _, p := range postList {
+	for _, p := range inline {
 		feedContent.WriteString("\n<br><br><br>\n")
 		feedContent.WriteString(fmt.Sprintf(
 			`<span class="post-link"><small><b><a href="%s">%s</a></b><small> ( at %d )</small></small></span>`,

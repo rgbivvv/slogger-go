@@ -204,9 +204,10 @@ func parsePostFile(name, srcDir, assetsDir string, cfg *Config, md goldmark.Mark
 	if err := md.Convert([]byte(content), &buf); err != nil {
 		return Post{}, false, err
 	}
+	htmlContent := LightenMedia(buf.String())
 	var ogTitle string
 	if len(parts) == 2 {
-		ogTitle = excerpt(buf.String(), ogTitleMaxLen)
+		ogTitle = excerpt(htmlContent, ogTitleMaxLen)
 	}
 	return Post{
 		FnameSrc:    name,
@@ -215,10 +216,10 @@ func parsePostFile(name, srcDir, assetsDir string, cfg *Config, md goldmark.Mark
 		Title:       title,
 		Epoch:       epoch,
 		Date:        date,
-		HTMLContent: buf.String(),
+		HTMLContent: htmlContent,
 		Permalink:   cfg.SiteURL + "/" + slug + ".html",
-		Description: PostDescription(buf.String()),
-		Image:       PostImage(buf.String(), cfg.SiteURL),
+		Description: PostDescription(htmlContent),
+		Image:       PostImage(htmlContent, cfg.SiteURL),
 		OGTitle:     ogTitle,
 	}, true, nil
 }
