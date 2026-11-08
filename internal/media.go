@@ -143,11 +143,21 @@ func ShrinkImage(path string) error {
 	dst := image.NewRGBA(image.Rect(0, 0, maxImageWidth, b.Dy()*maxImageWidth/b.Dx()))
 	draw.CatmullRom.Scale(dst, dst.Bounds(), src, b, draw.Src, nil)
 
+	info, err := f.Stat()
+	if err != nil {
+		return err
+	}
 	tmp, err := os.CreateTemp(filepath.Dir(path), ".shrink-*")
 	if err != nil {
 		return err
 	}
 	defer os.Remove(tmp.Name())
+	// CreateTemp makes 0600 files; keep the original's mode so the web
+	// server can still read the image.
+	if err := tmp.Chmod(info.Mode().Perm()); err != nil {
+		tmp.Close()
+		return err
+	}
 	bw := bufio.NewWriter(tmp)
 	if format == "jpeg" {
 		err = jpeg.Encode(bw, dst, &jpeg.Options{Quality: 80})
