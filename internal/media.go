@@ -8,6 +8,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -124,9 +125,9 @@ func ShrinkImage(path string) error {
 		}
 		orientation = jpegOrientation(f)
 	}
-	w := cfg.Width
+	w, h := cfg.Width, cfg.Height // upright size
 	if orientation >= 5 {
-		w = cfg.Height
+		w, h = h, w
 	}
 	if w <= maxImageWidth {
 		return nil
@@ -138,16 +139,28 @@ func ShrinkImage(path string) error {
 	if err != nil {
 		return err
 	}
-	src = applyOrientation(src, orientation)
+	// Scale first, then rotate the much smaller result. w is the upright
+	// width, so both stored dimensions shrink by maxImageWidth/w.
 	b := src.Bounds()
-	dst := image.NewRGBA(image.Rect(0, 0, maxImageWidth, b.Dy()*maxImageWidth/b.Dx()))
-	draw.CatmullRom.Scale(dst, dst.Bounds(), src, b, draw.Src, nil)
+	scaled := image.NewRGBA(image.Rect(0, 0, b.Dx()*maxImageWidth/w, b.Dy()*maxImageWidth/w))
+	draw.CatmullRom.Scale(scaled, scaled.Bounds(), src, b, draw.Src, nil)
+	dst := applyOrientation(scaled, orientation)
 
+	info, err := f.Stat()
+	if err != nil {
+		return err
+	}
 	tmp, err := os.CreateTemp(filepath.Dir(path), ".shrink-*")
 	if err != nil {
 		return err
 	}
 	defer os.Remove(tmp.Name())
+	// CreateTemp makes 0600 files; keep the original's mode so the web
+	// server can still read the image.
+	if err := tmp.Chmod(info.Mode().Perm()); err != nil {
+		tmp.Close()
+		return err
+	}
 	bw := bufio.NewWriter(tmp)
 	if format == "jpeg" {
 		err = jpeg.Encode(bw, dst, &jpeg.Options{Quality: 80})
@@ -164,7 +177,12 @@ func ShrinkImage(path string) error {
 		return err
 	}
 	f.Close()
-	return os.Rename(tmp.Name(), path)
+	if err := os.Rename(tmp.Name(), path); err != nil {
+		return err
+	}
+	db := dst.Bounds()
+	log.Printf("resized %s: %dx%d -> %dx%d", path, w, h, db.Dx(), db.Dy())
+	return nil
 }
 
 // jpegOrientation reads the EXIF orientation tag (1-8) from a JPEG stream,
@@ -226,7 +244,7 @@ func exifOrientation(tiff []byte) int {
 
 // applyOrientation returns src transformed so it displays upright for the
 // given EXIF orientation.
-func applyOrientation(src image.Image, o int) image.Image {
+func applyOrientation(src *image.RGBA, o int) *image.RGBA {
 	if o <= 1 || o > 8 {
 		return src
 	}
@@ -256,7 +274,8 @@ func applyOrientation(src image.Image, o int) image.Image {
 			case 8:
 				sx, sy = w-1-y, x
 			}
-			dst.Set(x, y, src.At(b.Min.X+sx, b.Min.Y+sy))
+			si := src.PixOffset(b.Min.X+sx, b.Min.Y+sy)
+			copy(dst.Pix[dst.PixOffset(x, y):][:4], src.Pix[si:si+4])
 		}
 	}
 	return dst

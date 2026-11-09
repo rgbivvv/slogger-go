@@ -88,6 +88,9 @@ func TestShrinkImage(t *testing.T) {
 	if err := ShrinkImage(wide); err != nil {
 		t.Fatal(err)
 	}
+	if info, err := os.Stat(wide); err != nil || info.Mode().Perm() != 0o644 {
+		t.Errorf("shrunk file mode = %v want 0644", info.Mode().Perm())
+	}
 	if w, h, _ := localImageSize(wide); w != maxImageWidth || h != 500 {
 		t.Errorf("wide png = %dx%d want %dx500", w, h, maxImageWidth)
 	}

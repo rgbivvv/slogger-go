@@ -21,9 +21,18 @@ var (
 )
 
 var (
-	client     = &http.Client{Timeout: 10 * time.Second}
-	downloadMu sync.Mutex
+	client = &http.Client{Timeout: 10 * time.Second}
+	// fileLocks serialises work on each mirrored file (download, resize,
+	// strip) while letting different files be processed in parallel.
+	fileLocks sync.Map // path -> *sync.Mutex
 )
+
+func lockFile(path string) (unlock func()) {
+	m, _ := fileLocks.LoadOrStore(path, &sync.Mutex{})
+	mu := m.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
+}
 
 func LocalizeRemoteAssets(text, destDir string) string {
 	urls := map[string]struct{}{}
@@ -61,8 +70,7 @@ func LocalizeRemoteAssets(text, destDir string) string {
 		}
 		destPath := filepath.Join(dir, fname)
 		fetched := func() bool {
-			downloadMu.Lock()
-			defer downloadMu.Unlock()
+			defer lockFile(destPath)()
 			if _, err := os.Stat(destPath); os.IsNotExist(err) {
 				if err := download(raw, destPath); err != nil {
 					log.Printf("failed to fetch %s: %v", raw, err)
@@ -71,6 +79,9 @@ func LocalizeRemoteAssets(text, destDir string) string {
 			}
 			if err := ShrinkImage(destPath); err != nil {
 				log.Printf("failed to shrink %s: %v", destPath, err)
+			}
+			if err := StripMetadata(destPath); err != nil {
+				log.Printf("failed to strip metadata from %s: %v", destPath, err)
 			}
 			return true
 		}()
