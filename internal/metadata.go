@@ -3,6 +3,7 @@ package internal
 import (
 	"bytes"
 	"encoding/binary"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -28,7 +29,11 @@ func StripMetadata(path string) error {
 	if !changed {
 		return nil
 	}
-	return replaceFile(path, out)
+	if err := replaceFile(path, out); err != nil {
+		return err
+	}
+	log.Printf("stripped metadata from %s", path)
+	return nil
 }
 
 // stripJPEG drops APP1 (EXIF, XMP), APP13 (Photoshop/IPTC) and COM segments.
