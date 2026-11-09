@@ -97,6 +97,38 @@ func stripJPEG(data []byte) ([]byte, bool) {
 	return out, true
 }
 
+// exifOrientation reads the orientation tag (1-8) from a TIFF/EXIF block,
+// returning 1 when it is absent or unreadable.
+func exifOrientation(tiff []byte) int {
+	var bo binary.ByteOrder
+	switch string(tiff[:2]) {
+	case "II":
+		bo = binary.LittleEndian
+	case "MM":
+		bo = binary.BigEndian
+	default:
+		return 1
+	}
+	ifd := int(bo.Uint32(tiff[4:8]))
+	if ifd+2 > len(tiff) {
+		return 1
+	}
+	count := int(bo.Uint16(tiff[ifd:]))
+	for i := 0; i < count; i++ {
+		e := ifd + 2 + i*12
+		if e+12 > len(tiff) {
+			return 1
+		}
+		if bo.Uint16(tiff[e:]) == 0x0112 {
+			if o := int(bo.Uint16(tiff[e+8:])); o >= 1 && o <= 8 {
+				return o
+			}
+			return 1
+		}
+	}
+	return 1
+}
+
 // orientationAPP1 builds an APP1 segment whose EXIF holds only the
 // orientation tag.
 func orientationAPP1(o int) []byte {
