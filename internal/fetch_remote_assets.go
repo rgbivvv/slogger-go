@@ -77,9 +77,6 @@ func LocalizeRemoteAssets(text, destDir string) string {
 					return false
 				}
 			}
-			if err := ShrinkImage(destPath); err != nil {
-				log.Printf("failed to shrink %s: %v", destPath, err)
-			}
 			if err := StripMetadata(destPath); err != nil {
 				log.Printf("failed to strip metadata from %s: %v", destPath, err)
 			}

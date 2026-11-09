@@ -31,8 +31,8 @@ Copy `config.example.json` to `config.json` and edit as needed:
 
 ### Keeping pages light
 
-- Remote images linked in posts are mirrored into `assets_dir`, and JPEGs/PNGs wider than 1440px are resized (EXIF rotation applied) when mirrored. Mirrored JPEGs and PNGs also have their metadata (EXIF incl. GPS location, XMP, IPTC, comments, PNG text chunks) stripped without re-encoding; a JPEG's rotation is kept so it still displays upright. Files you put in `assets_dir` yourself are not touched.
-- `<img>` tags get `loading="lazy" decoding="async"`, plus `width`/`height` for local images; `<video>` and `<audio>` get `preload="none"`. Any of these you set yourself in a post are kept. Make sure `header.html` has `img { height: auto; }` so the width/height attributes don't stretch images that are scaled down by `max-width`.
+- Remote images linked in posts are mirrored into `assets_dir` at their original size. Mirrored JPEGs and PNGs have their metadata (EXIF incl. GPS location, XMP, IPTC, comments, PNG text chunks) stripped without re-encoding; a JPEG's rotation is kept so it still displays upright. Files you put in `assets_dir` yourself are not touched.
+- `<img>` tags get `loading="lazy" decoding="async"`; `<video>` and `<audio>` get `preload="none"`. Any of these you set yourself in a post are kept.
 
 Create a file called `index.md`. Example:
 
